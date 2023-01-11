@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="array_list">
+        <item>yyyy(년)</item>
+        <item>yyyy-MM(년-월)</item>
+        <item>yyyy-MM-dd(년-월-일)</item>
+        <item>yyyy-MM-dd hh(년-월-일 시간)</item>
+        <item>yyyy-MM-dd hh:mm(년-월-일 시간:분)</item>
+        <item>yyyy-MM-dd hh:mm:ss(년-월-일 시간:분:초)</item>
+        <item>MM(월)</item>
+        <item>MM-dd(월-일)</item>
+        <item>MM-dd hh(월-일 시간)</item>
+        <item>MM-dd hh:mm(월-일 시간:분)</item>
+        <item>MM-dd hh:mm:ss(월-일 시간:분:초)</item>
+        <item>dd(일)</item>
+        <item>dd hh(일 시간)</item>
+        <item>dd hh:mm(일 시간:분)</item>
+        <item>dd hh:mm:ss(일 시간:분:초)</item>
+        <item>hh(시간)</item>
+        <item>hh:mm(시간:분)</item>
+        <item>hh:mm:ss(시간:분:초)</item>
+        <item>mm(분)</item>
+        <item>mm:ss(분:초)</item>
+        <item>ss(초)</item>
+    </string-array>
+</resources>
