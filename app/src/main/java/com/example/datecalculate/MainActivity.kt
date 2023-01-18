@@ -1,79 +1,235 @@
 package com.example.datecalculate
 
 import android.app.DatePickerDialog
-import androidx.appcompat.app.AppCompatActivity
+import android.content.Context
+import android.content.Intent
+import android.content.SharedPreferences
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Typeface
 import android.os.Bundle
-import android.util.Log
-import android.widget.TextView
-import androidx.appcompat.widget.AppCompatButton
-import java.text.SimpleDateFormat
-import java.util.*
-
 import android.os.CountDownTimer
+import android.util.Log
 import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
+import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.AppCompatButton
+import androidx.appcompat.widget.AppCompatCheckBox
 import androidx.appcompat.widget.AppCompatSpinner
-import java.time.*
+import com.ikovac.timepickerwithseconds.MyTimePickerDialog
+import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import java.time.temporal.ChronoField
 import java.time.temporal.ChronoUnit
-import kotlin.math.floor
+import java.util.*
 
 
 class MainActivity : AppCompatActivity() {
+    private var START_STATE = 1
+    private var STOP_STATE = 0
+    lateinit var preferences: SharedPreferences
+    lateinit var editor: SharedPreferences.Editor
     var format = 0
+    var selectYear = -1
+    var selectMonth = -1
+    var selectDay = -1
+    var selectHour = -1
+    var selectMinute = -1
+    var selectSecond = -1
+    var startClickCheck = true
+    var endTimeCountDownTimer: CountDownTimer? = null
+    lateinit var dateData: String
+    lateinit var timeData: String
+
+    lateinit var currentDateText: TextView // 현재 시간을 나타내는 text
+    lateinit var selectDateText: TextView  // 선택한 시간을 나타내는 text
+    lateinit var resultDateText: TextView // 남은 시간(결과)을 나타내는 text
+    lateinit var dateSelect: AppCompatButton
+    lateinit var timeSelect: AppCompatButton
+    lateinit var startButton: AppCompatButton
+    lateinit var pushCheck: AppCompatCheckBox
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        preferences = getSharedPreferences("data_save", Context.MODE_PRIVATE)
+        editor = preferences.edit()
 
-        // 현재 시간을 나타내는 text
-        val currentDateText = findViewById<TextView>(R.id.current)
+        format = preferences.getInt("format", 0)
+        selectYear = preferences.getInt("year", -1)
+        selectMonth = preferences.getInt("month", -1)
+        selectDay = preferences.getInt("day", -1)
+        selectHour = preferences.getInt("hour", -1)
+        selectMinute = preferences.getInt("minute", -1)
+        selectSecond = preferences.getInt("second", -1)
+        startClickCheck = preferences.getBoolean("click_check", true)
+        dateData = preferences.getString("date_data", "-").toString()
+        timeData = preferences.getString("time_data", "-").toString()
 
-        // 선택한 시간을 나타내는 text
-        val selectDateText = findViewById<TextView>(R.id.select_date)
+        currentDateText = findViewById<TextView>(R.id.current) // 현재 시간을 나타내는 text
+        selectDateText = findViewById<TextView>(R.id.select_date) // 선택한 시간을 나타내는 text
+        resultDateText = findViewById<TextView>(R.id.result_time) // 남은 시간(결과)을 나타내는 text
+        dateSelect = findViewById<AppCompatButton>(R.id.date_select)
+        timeSelect = findViewById<AppCompatButton>(R.id.time_select)
+        startButton = findViewById<AppCompatButton>(R.id.start)
+        pushCheck = findViewById<AppCompatCheckBox>(R.id.create_notification)
 
-        // 남은 시간(결과)을 나타내는 text
-        val resultDateText = findViewById<TextView>(R.id.result_time)
+        selectDateText.text = dateData + timeData
+
+        // 날짜 선택 버튼
+        dateSelect.setOnClickListener {
+            val cal = Calendar.getInstance()
+            val resDate = cal.apply {
+                set(
+                    cal.get(Calendar.YEAR),
+                    cal.get(Calendar.MONTH),
+                    cal.get(Calendar.DATE)
+                )
+            }
+
+            val datePicker =
+                DatePickerDialog(this, DatePickerDialog.OnDateSetListener { datePicker, y, m, d ->
+                    selectYear = y
+                    selectMonth = m + 1
+                    selectDay = d
+                    dateData = "${selectYear}년 ${selectMonth}월 ${selectDay}일 "
+                    selectDateText.text = dateData + timeData
+
+                    editor.putInt("year", selectYear)
+                    editor.putInt("month", selectMonth)
+                    editor.putInt("day", selectDay)
+                    editor.putString("date_data", dateData)
+                    editor.apply()
+                }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DATE)).apply {
+                    datePicker.minDate = resDate.timeInMillis
+                }
+            datePicker.show()
+        }
+
+        // 시간 선택 버튼
+        timeSelect.setOnClickListener {
+            val cal = Calendar.getInstance()
+            MyTimePickerDialog(
+                this,
+                { view, h, mm, s ->
+                    selectHour = h
+                    selectMinute = mm
+                    selectSecond = s
+                    timeData = "${selectHour}시 ${selectMinute}분 ${selectSecond}초"
+                    selectDateText.text = dateData + timeData
+
+                    editor.putInt("hour", selectHour)
+                    editor.putInt("minute", selectMinute)
+                    editor.putInt("second", selectSecond)
+                    editor.putString("time_data", timeData)
+                    editor.apply()
+                },
+                cal.get(Calendar.HOUR_OF_DAY),
+                cal.get(Calendar.MINUTE),
+                cal.get(Calendar.SECOND),
+                true
+            ).show()
+        }
+
+        val serviceIntent = Intent(this@MainActivity, NotificationForegroundService::class.java)
+
+        pushCheck.setOnClickListener {
+            if (pushCheck.isChecked) startService(serviceIntent)
+            else stopService(serviceIntent)
+
+            Log.d("testtest", "push : " + pushCheck.isChecked.toString())
+            editor.putBoolean("push_check", pushCheck.isChecked)
+            editor.apply()
+        }
+
+        pushCheck.isChecked = preferences.getBoolean("push_check", false)
+        if (pushCheck.isChecked) startService(serviceIntent)
+        else stopService(serviceIntent)
+
+        Log.d("testtest", "push : " + pushCheck.isChecked.toString())
+
+        startButton.setOnClickListener {
+            editor.putBoolean("click_check", startClickCheck)
+            editor.apply()
+
+            if (startClickCheck) start(serviceIntent)
+            else stop()
+        }
+
+        if (startClickCheck) start(serviceIntent)
+        else stop()
+
 
         // 스피너 설정 (날짜 포맷형식 선택)
         val spinner = findViewById<AppCompatSpinner>(R.id.spinner_dateFormat)
         ArrayAdapter.createFromResource(
             this,
             R.array.array_list,
-            android.R.layout.simple_spinner_item
+            R.layout.spinner_dropdown_item
         ).also { adapter ->
-            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
             spinner.adapter = adapter
-        }
-
-        spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(
-                adapterView: AdapterView<*>?,
-                p1: View?,
-                position: Int,
-                p3: Long
-            ) {
-                if (position == 0) format = 0
-                else if (position == 1) format = 1
-                else if (position == 2) format = 2
-                else if (position == 3) format = 3
-                else if (position == 4) format = 4
-                else if (position == 5) format = 5
-                else if (position == 6) format = 6
-                else if (position == 7) format = 7
-                else if (position == 8) format = 8
-                else if (position == 9) format = 9
-                else if (position == 10) format = 10
-
-                //resultDateText.text =
-            }
-
-            override fun onNothingSelected(p0: AdapterView<*>?) {
-                resultDateText.text = "선택 없음"
+            spinner.viewTreeObserver.addOnGlobalLayoutListener {
+                (spinner.selectedView as TextView).setTextColor(Color.WHITE)
+                (spinner.selectedView as TextView).setTypeface(null, Typeface.BOLD_ITALIC)
+                (spinner.selectedView as TextView).paintFlags = Paint.UNDERLINE_TEXT_FLAG
+                (spinner.selectedView as TextView).setBackgroundResource(R.drawable.spinner_custom)
             }
         }
+
+        spinner.setSelection(format)
+        spinner.onItemSelectedListener =
+            object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(
+                    adapterView: AdapterView<*>?,
+                    p1: View?,
+                    position: Int,
+                    p3: Long
+                ) {
+                    when (position) {
+                        // year +
+                        0 -> format = 0
+                        1 -> format = 1
+                        2 -> format = 2
+                        3 -> format = 3
+                        4 -> format = 4
+                        5 -> format = 5
+
+                        // month +
+                        6 -> format = 6
+                        7 -> format = 7
+                        8 -> format = 8
+                        9 -> format = 9
+                        10 -> format = 10
+
+                        // day +
+                        11 -> format = 11
+                        12 -> format = 12
+                        13 -> format = 13
+                        14 -> format = 14
+
+                        // hour +
+                        15 -> format = 15
+                        16 -> format = 16
+                        17 -> format = 17
+
+                        // minute +
+                        18 -> format = 18
+                        19 -> format = 19
+
+                        // second
+                        20 -> format = 20
+                    }
+
+                    editor.putInt("format", format)
+                    editor.apply()
+                }
+
+                override fun onNothingSelected(p0: AdapterView<*>?) {
+                    resultDateText.text = "-"
+                }
+            }
 
         // millisInFuture : 얼마나 작동할 것인지
         // countDownInterval : 몇 초 간격으로 작동할 것인지
@@ -86,103 +242,93 @@ class MainActivity : AppCompatActivity() {
             override fun onFinish() {}
         }
 
-        val endTime = LocalDateTime.of(2023, 2, 11, 4, 47, 19)
-        selectDateText.text = endTime.format(DateFormat().formatterYear6)
+        currentTimeCountDownTimer.start()
+    }
+
+    private fun start(serviceIntent: Intent) {
+        editor.putInt("state", START_STATE)
+        editor.apply()
+
+        if (pushCheck.isChecked) startService(serviceIntent)
+        else stopService(serviceIntent)
+
+        if (endTimeCountDownTimer != null)
+            endTimeCountDownTimer?.cancel()
+
+        // 만약 시간을 설정하지 않았다면
+        if ((selectYear == -1) || (selectMonth == -1) || (selectDay == -1)
+            || (selectHour == -1) || (selectMinute == -1) || (selectSecond == -1)
+        ) {
+            Toast.makeText(applicationContext, "목표 시간을 설정해 주세요.", Toast.LENGTH_SHORT)
+                .show()
+            return
+        }
+
+        // 최종 목표 시간
+        val endTime =
+            LocalDateTime.of(
+                selectYear,
+                selectMonth,
+                selectDay,
+                selectHour,
+                selectMinute,
+                selectSecond
+            )
+
+        selectDateText.text =
+            endTime.format(DateTimeFormatter.ofPattern("yyyy년 M월 d일 H시 m분 s초"))
 
         val endTimer: Long =
-            ChronoUnit.SECONDS.between(LocalDateTime.now(), endTime) * 1000 // 남은 시간동안 카운트
-        val endTimeCountDownTimer = object : CountDownTimer(endTimer, 1000) {
+            ChronoUnit.MILLIS.between(LocalDateTime.now(), endTime) + 1000 // 남은 시간동안 카운트
+        endTimeCountDownTimer = object : CountDownTimer(endTimer, 1000) {
             override fun onTick(millisUntilFinished: Long) {
-                resultDateText.setText(getEndTime(endTime, format))
+                resultDateText.setText(DateDifference().getEndTime(endTime, format))
             }
 
             override fun onFinish() {
-                resultDateText.setText("설정한 시간이 경과하였습니다.")
+                Toast.makeText(applicationContext, "목표 시간을 다시 설정해 주세요.", Toast.LENGTH_SHORT)
+                    .show()
             }
         }
 
-        currentTimeCountDownTimer.start()
-        endTimeCountDownTimer.start()
+        startButton.text = "D-DAY 중지"
+        startButton.setBackgroundResource(R.drawable.button_cancel_shape)
+        dateSelect.isClickable = false
+        dateSelect.setBackgroundResource(R.drawable.button_cancel_shape)
+        timeSelect.isClickable = false
+        timeSelect.setBackgroundResource(R.drawable.button_cancel_shape)
+
+        startClickCheck = false
+        endTimeCountDownTimer?.start()
+    }
+
+    private fun stop() {
+        editor.putInt("state", STOP_STATE)
+        editor.apply()
+
+        startButton.text = "D-DAY 시작"
+        startButton.setBackgroundResource(R.drawable.button_shape)
+        dateSelect.isClickable = true
+        dateSelect.setBackgroundResource(R.drawable.button_shape)
+        timeSelect.isClickable = true
+        timeSelect.setBackgroundResource(R.drawable.button_shape)
+
+        startClickCheck = true
+        resultDateText.text = "[stop]\n" + "시작 버튼을 눌러주세요"
+
+        endTimeCountDownTimer?.cancel()
     }
 
     private fun getCurrentTime(): String? {
         // 현재 시간
         val currentTime = LocalDateTime.now()
-        val formatter = DateFormat()
+        val formatter = DateTimeFormatter.ofPattern("yyyy년 M월 d일 H시 m분 s초")
 
         // 형식 : 년 월 일 시간 분 초
-        return currentTime.format(formatter.formatterYear6)
+        return currentTime.format(formatter)
     }
 
-    private fun getEndTime(endTime: LocalDateTime, format: Int): String? {
-        // 현재 시간
-        val currentTime = LocalDateTime.now()
-        val formatter = DateFormat()
-
-        val year = ChronoUnit.YEARS.between(currentTime, endTime) // 년
-        val month = ChronoUnit.MONTHS.between(currentTime, endTime) // 월
-        val day = ChronoUnit.DAYS.between(currentTime, endTime) // 일
-        val hour = ChronoUnit.HOURS.between(currentTime, endTime) // 시간
-        val minute = ChronoUnit.MINUTES.between(currentTime, endTime) // 분
-        val second = ChronoUnit.SECONDS.between(currentTime, endTime) // 초
-
-        val e = currentTime.get(ChronoField.DAY_OF_MONTH)
-        // Log.d("testtest", e.toString())
-
-        val diffDate = endTime.minusYears(currentTime.getLong(ChronoField.YEAR))
-            .minusMonths(currentTime.getLong(ChronoField.MONTH_OF_YEAR))
-            .minusDays(currentTime.getLong(ChronoField.DAY_OF_MONTH))
-            .minusHours(currentTime.getLong(ChronoField.HOUR_OF_DAY))
-            .minusMinutes(currentTime.getLong(ChronoField.MINUTE_OF_HOUR))
-            .minusSeconds(currentTime.getLong(ChronoField.SECOND_OF_MINUTE))
-            .truncatedTo(ChronoUnit.SECONDS)
-            .format(formatter.formatterYear6)
-
-        Log.d("testtest", diffDate.toString())
-
-        /*
-        val diffYear = endTime.minusYears(currentTime.getLong(ChronoField.YEAR)).year
-
-        val diffMonth =
-            endTime.minusMonths(currentTime.getLong(ChronoField.MONTH_OF_YEAR)).monthValue // 문제
-        val diffDay = endTime.minusDays(currentTime.getLong(ChronoField.DAY_OF_MONTH)).dayOfMonth // 문제
-
-        val diffHour = endTime.minusHours(currentTime.getLong(ChronoField.HOUR_OF_DAY)).hour
-        val diffMinute =
-            endTime.minusMinutes(currentTime.getLong(ChronoField.MINUTE_OF_HOUR)).minute
-        val diffSecond =
-            endTime.minusSeconds(currentTime.getLong(ChronoField.SECOND_OF_MINUTE)).second
-
-         */
-
-
-/*
-        val diffYear = dateDiv.format(formatter.formatterYear)
-        val diffMonth = dateDiv.format(formatter.formatterMonth)
-        val diffDay = dateDiv.format(formatter.formatterDay)
-        val diffHour = dateDiv.format(formatter.formatterHour)
-        val diffMinute = dateDiv.format(formatter.formatterMinute)
-        val diffSecond = dateDiv.format(formatter.formatterSecond)
-*/
-        /*
-        when (format) {
-            0 -> return "${diffYear}년"
-            1 -> return "${diffYear}년 ${diffMonth}개월 남았습니다."
-            2 -> return "${diffYear}년 ${diffMonth}개월 ${diffDay}일 남았습니다."
-            3 -> return "${diffYear}년 ${diffMonth}개월 ${diffDay}일 ${diffHour}시간 남았습니다."
-            4 -> return "${diffYear}년 ${diffMonth}개월 ${diffDay}일 ${diffHour}시간 ${diffMinute}분 남았습니다."
-            5 -> return "${diffYear}년 ${diffMonth}개월 ${diffDay}일 ${diffHour}시간 ${diffMinute}분 ${diffSecond}초 남았습니다."
-
-            6 -> return "${month}개월 남았습니다."
-            7 -> return "${month}개월 ${month}일 남았습니다."
-            8 -> return "${month}개월 ${month}일 ${hour % 24}시간 남았습니다."
-            9 -> return "${month}개월 ${month}일 ${hour % 24}시간 ${minute % 60}분 남았습니다."
-            10 -> return "${month}개월 ${month}일 ${hour % 24}시간 ${minute % 60}분 ${second % 60}초 남았습니다."
-
-            else -> return "[Error] 지원되지 않는 형식입니다."
-        }
-
-         */
-        return "0"
+    override fun onDestroy() {
+        super.onDestroy()
     }
 }

@@ -10,63 +10,88 @@
     <androidx.appcompat.widget.LinearLayoutCompat
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:padding="5dp">
 
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="#DAD9FF"
+            android:layout_width="100dp"
+            android:layout_height="50dp"
+            android:background="@drawable/text_shape"
+            android:gravity="center"
             android:paddingBottom="5dp"
+            android:shadowColor="#A8A8A8"
             android:text="현재 시간"
+            android:textColor="#BCFF70"
             android:textSize="20dp" />
 
         <TextView
             android:id="@+id/current"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center"
+            android:layout_marginLeft="10dp"
+            android:gravity="left"
             android:hint="현재 시간"
-            android:paddingBottom="5dp"
             android:textSize="18dp" />
     </androidx.appcompat.widget.LinearLayoutCompat>
 
     <androidx.appcompat.widget.LinearLayoutCompat
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:padding="5dp">
 
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="#CEFBC9"
-            android:paddingBottom="5dp"
-            android:text="선택 시간"
+            android:layout_width="100dp"
+            android:layout_height="50dp"
+            android:background="@drawable/text_shape"
+            android:gravity="center"
+            android:shadowColor="#A8A8A8"
+            android:text="목표 시간"
+            android:textColor="#BCFF70"
             android:textSize="20dp" />
 
         <TextView
             android:id="@+id/select_date"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center"
+            android:layout_marginLeft="10dp"
+            android:gravity="left"
             android:hint="선택한 날짜와 시간"
             android:textSize="18dp" />
     </androidx.appcompat.widget.LinearLayoutCompat>
 
-    <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/date_select"
+    <androidx.appcompat.widget.LinearLayoutCompat
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="날짜 선택"
-        android:textSize="20sp"
-        android:textStyle="bold" />
+        android:layout_gravity="right"
+        android:orientation="horizontal"
+        android:padding="5dp">
 
-    <androidx.appcompat.widget.AppCompatButton
-        android:id="@+id/time_select"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="시간 선택"
-        android:textSize="20sp"
-        android:textStyle="bold" />
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/date_select"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_margin="5dp"
+            android:layout_weight="1"
+            android:background="@drawable/button_shape"
+            android:shadowColor="#911EA8"
+            android:text="날짜 선택"
+            android:textColor="#FFFFB8"
+            android:textSize="25sp"
+            android:textStyle="bold" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/time_select"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_margin="5dp"
+            android:layout_weight="1"
+            android:background="@drawable/button_shape"
+            android:text="시간 선택"
+            android:textColor="#FFFFB8"
+            android:textSize="25sp"
+            android:textStyle="bold" />
+    </androidx.appcompat.widget.LinearLayoutCompat>
 
     <TextView
         android:id="@+id/result_time"
@@ -75,22 +100,56 @@
         android:layout_weight="1"
         android:background="#D4F4FA"
         android:gravity="center"
-        android:text="시간 표시"
+        android:text="시간을 설정해 주세요."
         android:textColor="#8041D9"
         android:textSize="20sp"
         android:textStyle="bold" />
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/start"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="5dp"
+        android:background="@drawable/button_shape"
+        android:shadowColor="#911EA8"
+        android:text="D-Day 시작"
+        android:textColor="#FFFFB8"
+        android:textSize="25sp"
+        android:textStyle="bold" />
+
+    <androidx.appcompat.widget.LinearLayoutCompat
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <androidx.appcompat.widget.AppCompatCheckBox
+            android:id="@+id/create_notification"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="알림 생성"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+    </androidx.appcompat.widget.LinearLayoutCompat>
 
     <androidx.appcompat.widget.LinearLayoutCompat
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="0.2"
+        android:background="#22436F"
+        android:gravity="center"
         android:orientation="horizontal">
 
         <androidx.appcompat.widget.AppCompatSpinner
             android:id="@+id/spinner_dateFormat"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_gravity="center" />
+            android:layout_gravity="center"
+            android:background="@drawable/spinner_custom"
+            android:overlapAnchor="false"
+            android:popupBackground="#DEDEDE"
+            android:popupElevation="10dp"
+            android:textColor="@color/white"
+            android:textSize="20sp" />
 
     </androidx.appcompat.widget.LinearLayoutCompat>
 
