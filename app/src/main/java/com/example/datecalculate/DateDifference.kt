@@ -1,13 +1,31 @@
 package com.example.datecalculate
 
+import android.util.Log
 import java.time.LocalDateTime
 import java.time.temporal.ChronoField
 import java.time.temporal.ChronoUnit
 
 class DateDifference {
+
+    // 날짜 계산이 끝나면 push 서비스 종료
+    fun finish(endTime: LocalDateTime): Boolean {
+        // 현재 시간
+        val currentTime = LocalDateTime.now()
+
+        if (endTime.isBefore(currentTime)) {
+            return true
+        } else {
+            return false
+        }
+    }
+
     fun getEndTime(endTime: LocalDateTime, format: Int): String? {
         // 현재 시간
         val currentTime = LocalDateTime.now()
+
+        if(finish(endTime)){
+            return "[END] 날짜가 경과했습니다."
+        }
 
         // 총 시간 기준 일, 시, 분, 초
         val day = ChronoUnit.DAYS.between(currentTime, endTime) // 일

@@ -17,23 +17,20 @@ import java.util.*
 class NotificationForegroundService : Service() {
     private var START_STATE = 1
     private var STOP_STATE = 0
-    private var ERROR_STATE = -1
+    private var INIT_STATE = -1
     private var message: String? = ""
     private var mThread: Thread? = null
     lateinit var preferences: SharedPreferences
     lateinit var endTime: LocalDateTime
     lateinit var timer: Timer
-
-    var endTimeCountDownTimer: CountDownTimer? = null
+    lateinit var dateDifference: DateDifference
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChanel()
+        dateDifference = DateDifference()
         preferences = getSharedPreferences("data_save", MODE_PRIVATE)
         endTime = initData()
-        mThread.run {
-            startNotification()
-        }
         Log.d(TAG, "onCreate")
     }
 
@@ -44,6 +41,12 @@ class NotificationForegroundService : Service() {
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         endTime = initData()
+
+        Thread().run {
+            startNotification()
+            Log.d("testtest", "2번")
+        }
+
         return super.onStartCommand(intent, flags, startId)
     }
 
@@ -72,14 +75,22 @@ class NotificationForegroundService : Service() {
         timer = Timer()
         timer.schedule(object : TimerTask() {
             override fun run() {
+                if (dateDifference.finish(endTime)) {
+                    this.cancel()
+                }
+
                 val format = preferences.getInt("format", 0)
-                val state = preferences.getInt("state", ERROR_STATE)
+                val state = preferences.getInt("state", INIT_STATE)
 
                 // 시작 버튼을 눌렀을 경우
-                if (state == START_STATE) message =
-                    DateDifference().getEndTime(endTime, format).toString()
+                if (state == START_STATE || state == INIT_STATE) message =
+                    dateDifference.getEndTime(endTime, format).toString()
                 // 중지 버튼을 눌렀을 경우
-                else message = "stop"
+                else if (state == STOP_STATE) {
+                    message = "[STOP]"
+                    createNotification(message!!)
+                    this.cancel()
+                }
 
                 createNotification(message!!)
 
@@ -97,13 +108,14 @@ class NotificationForegroundService : Service() {
             this,
             NOTI_ID,
             notificationIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT
+            PendingIntent.FLAG_IMMUTABLE
         )
 
         val builder = NotificationCompat.Builder(this, "default")
             .setSmallIcon(R.drawable.checkbox_on_background)
             .setContentTitle("남은 시간 : " + msg)
             .setColor(Color.CYAN)
+            .setOngoing(true)
             .setContentIntent(pendingIntent) // 알림 클릭 시 이동
 
         // 알림 표시
@@ -119,15 +131,15 @@ class NotificationForegroundService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = "상단바 알림 고정"
             val channel =
-                NotificationChannel("default", name, NotificationManager.IMPORTANCE_LOW)
-
+                NotificationChannel("default", name, NotificationManager.IMPORTANCE_LOW).apply {
+                    setShowBadge(false)
+                }
             notificationManager.createNotificationChannel(channel)
         }
     }
 
     override fun onDestroy() {
         timer.cancel()
-        stopSelf()
 
         if (mThread != null) {
             mThread!!.interrupt()

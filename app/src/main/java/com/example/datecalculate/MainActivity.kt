@@ -29,6 +29,7 @@ import java.util.*
 class MainActivity : AppCompatActivity() {
     private var START_STATE = 1
     private var STOP_STATE = 0
+    private var INIT_STATE = -1
     lateinit var preferences: SharedPreferences
     lateinit var editor: SharedPreferences.Editor
     var format = 0
@@ -38,7 +39,7 @@ class MainActivity : AppCompatActivity() {
     var selectHour = -1
     var selectMinute = -1
     var selectSecond = -1
-    var startClickCheck = true
+    var startClickCheck = INIT_STATE
     var endTimeCountDownTimer: CountDownTimer? = null
     lateinit var dateData: String
     lateinit var timeData: String
@@ -64,9 +65,9 @@ class MainActivity : AppCompatActivity() {
         selectHour = preferences.getInt("hour", -1)
         selectMinute = preferences.getInt("minute", -1)
         selectSecond = preferences.getInt("second", -1)
-        startClickCheck = preferences.getBoolean("click_check", true)
+        startClickCheck = preferences.getInt("click_check", INIT_STATE)
         dateData = preferences.getString("date_data", "-").toString()
-        timeData = preferences.getString("time_data", "-").toString()
+        timeData = preferences.getString("time_data", "").toString()
 
         currentDateText = findViewById<TextView>(R.id.current) // 현재 시간을 나타내는 text
         selectDateText = findViewById<TextView>(R.id.select_date) // 선택한 시간을 나타내는 text
@@ -96,12 +97,6 @@ class MainActivity : AppCompatActivity() {
                     selectDay = d
                     dateData = "${selectYear}년 ${selectMonth}월 ${selectDay}일 "
                     selectDateText.text = dateData + timeData
-
-                    editor.putInt("year", selectYear)
-                    editor.putInt("month", selectMonth)
-                    editor.putInt("day", selectDay)
-                    editor.putString("date_data", dateData)
-                    editor.apply()
                 }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DATE)).apply {
                     datePicker.minDate = resDate.timeInMillis
                 }
@@ -119,12 +114,6 @@ class MainActivity : AppCompatActivity() {
                     selectSecond = s
                     timeData = "${selectHour}시 ${selectMinute}분 ${selectSecond}초"
                     selectDateText.text = dateData + timeData
-
-                    editor.putInt("hour", selectHour)
-                    editor.putInt("minute", selectMinute)
-                    editor.putInt("second", selectSecond)
-                    editor.putString("time_data", timeData)
-                    editor.apply()
                 },
                 cal.get(Calendar.HOUR_OF_DAY),
                 cal.get(Calendar.MINUTE),
@@ -135,7 +124,23 @@ class MainActivity : AppCompatActivity() {
 
         val serviceIntent = Intent(this@MainActivity, NotificationForegroundService::class.java)
 
+        // 만약 시간을 설정하지 않았다면
+        if ((selectYear == -1) || (selectMonth == -1) || (selectDay == -1)
+            || (selectHour == -1) || (selectMinute == -1) || (selectSecond == -1)
+        ) {
+            pushCheck.isEnabled = false
+        }
+
         pushCheck.setOnClickListener {
+            // 초기 상태인 경우
+            /*
+            if (startClickCheck == INIT_STATE) {
+                Toast.makeText(applicationContext, "123", Toast.LENGTH_SHORT)
+                    .show()
+                pushCheck.isChecked = false
+                pushCheck.isEnabled = false
+            }*/
+
             if (pushCheck.isChecked) startService(serviceIntent)
             else stopService(serviceIntent)
 
@@ -151,16 +156,18 @@ class MainActivity : AppCompatActivity() {
         Log.d("testtest", "push : " + pushCheck.isChecked.toString())
 
         startButton.setOnClickListener {
-            editor.putBoolean("click_check", startClickCheck)
-            editor.apply()
-
-            if (startClickCheck) start(serviceIntent)
+            if (startClickCheck == STOP_STATE || startClickCheck == INIT_STATE) start(serviceIntent)
             else stop()
+
+            editor.putInt("click_check", startClickCheck)
+            editor.apply()
         }
 
-        if (startClickCheck) start(serviceIntent)
-        else stop()
-
+        Log.d("testtest", startClickCheck.toString())
+        // 앱을 다시 켤 때 상태 값 받아와서 실행
+        if (startClickCheck == START_STATE) start(serviceIntent) // 시작 상태
+        else if (startClickCheck == STOP_STATE) stop() // 정지 상태
+        else init() // 초기 상태
 
         // 스피너 설정 (날짜 포맷형식 선택)
         val spinner = findViewById<AppCompatSpinner>(R.id.spinner_dateFormat)
@@ -245,9 +252,25 @@ class MainActivity : AppCompatActivity() {
         currentTimeCountDownTimer.start()
     }
 
+    private fun init() {
+        resultDateText.text = "[END]\n" + "설정한 시간이 경과했습니다."
+        // pushCheck.isEnabled = false
+    }
+
     private fun start(serviceIntent: Intent) {
+        editor.putString("date_data", dateData)
+        editor.putString("time_data", timeData)
+        editor.putInt("year", selectYear)
+        editor.putInt("month", selectMonth)
+        editor.putInt("day", selectDay)
+        editor.putInt("hour", selectHour)
+        editor.putInt("minute", selectMinute)
+        editor.putInt("second", selectSecond)
         editor.putInt("state", START_STATE)
         editor.apply()
+
+        // 알림 체크박스 활성화
+        // pushCheck.isEnabled = true
 
         if (pushCheck.isChecked) startService(serviceIntent)
         else stopService(serviceIntent)
@@ -263,6 +286,8 @@ class MainActivity : AppCompatActivity() {
                 .show()
             return
         }
+
+        pushCheck.isEnabled = true
 
         // 최종 목표 시간
         val endTime =
@@ -286,8 +311,9 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onFinish() {
-                Toast.makeText(applicationContext, "목표 시간을 다시 설정해 주세요.", Toast.LENGTH_SHORT)
+                Toast.makeText(applicationContext, "설정한 시간이 경과하였습니다.", Toast.LENGTH_SHORT)
                     .show()
+                stop(INIT_STATE)
             }
         }
 
@@ -298,12 +324,12 @@ class MainActivity : AppCompatActivity() {
         timeSelect.isClickable = false
         timeSelect.setBackgroundResource(R.drawable.button_cancel_shape)
 
-        startClickCheck = false
+        startClickCheck = START_STATE
         endTimeCountDownTimer?.start()
     }
 
-    private fun stop() {
-        editor.putInt("state", STOP_STATE)
+    private fun stop(state: Int = STOP_STATE) {
+        editor.putInt("state", state)
         editor.apply()
 
         startButton.text = "D-DAY 시작"
@@ -313,8 +339,15 @@ class MainActivity : AppCompatActivity() {
         timeSelect.isClickable = true
         timeSelect.setBackgroundResource(R.drawable.button_shape)
 
-        startClickCheck = true
-        resultDateText.text = "[stop]\n" + "시작 버튼을 눌러주세요"
+        startClickCheck = state
+
+        if (state == STOP_STATE) {
+            resultDateText.text = "[stop]\n" + "시작 버튼을 눌러주세요"
+            //pushCheck.isEnabled = true
+        } else {
+            resultDateText.text = "[END]\n" + "설정한 시간이 경과했습니다."
+            //pushCheck.isEnabled = false
+        }
 
         endTimeCountDownTimer?.cancel()
     }
